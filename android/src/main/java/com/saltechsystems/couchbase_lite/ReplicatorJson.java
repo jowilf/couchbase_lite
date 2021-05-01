@@ -1,7 +1,5 @@
 package com.saltechsystems.couchbase_lite;
 
-import android.content.res.AssetManager;
-
 import com.couchbase.lite.BasicAuthenticator;
 import com.couchbase.lite.Database;
 import com.couchbase.lite.Endpoint;
@@ -12,10 +10,14 @@ import com.couchbase.lite.SessionAuthenticator;
 import com.couchbase.lite.URLEndpoint;
 
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import io.flutter.plugin.common.JSONUtil;
 
@@ -48,7 +50,8 @@ class ReplicatorJson {
     }
 
     private void inflateConfig() {
-        if (!replicatorMap.hasDatabase || !replicatorMap.hasTarget) throw new IllegalArgumentException();
+        if (!replicatorMap.hasDatabase || !replicatorMap.hasTarget)
+            throw new IllegalArgumentException();
 
         Database database = mCBManager.getDatabase(replicatorMap.database);
         if (database == null) {
@@ -57,7 +60,7 @@ class ReplicatorJson {
 
         Endpoint endpoint = new URLEndpoint(URI.create(replicatorMap.target));
 
-        mReplicatorConfig = new ReplicatorConfiguration(database,endpoint);
+        mReplicatorConfig = new ReplicatorConfiguration(database, endpoint);
 
         if (replicatorMap.hasReplicatorType) {
             switch (replicatorMap.replicatorType) {
@@ -91,25 +94,32 @@ class ReplicatorJson {
         if (replicatorMap.hasAuthenticator) {
             inflateAuthenticator();
         }
+
+        if (replicatorMap.documentIds != null) {
+            mReplicatorConfig.setDocumentIDs(replicatorMap.documentIds);
+        }
     }
 
     private void inflateAuthenticator() {
-        if (!replicatorMap.authenticator.containsKey("method")) throw new IllegalArgumentException("Missing authentication method");
+        if (!replicatorMap.authenticator.containsKey("method"))
+            throw new IllegalArgumentException("Missing authentication method");
 
         String method = (String) replicatorMap.authenticator.get("method");
 
         switch (method) {
             case "basic":
-                if (!replicatorMap.authenticator.containsKey("username") || !replicatorMap.authenticator.containsKey("password")) throw new IllegalArgumentException("Missing username or password");
+                if (!replicatorMap.authenticator.containsKey("username") || !replicatorMap.authenticator.containsKey("password"))
+                    throw new IllegalArgumentException("Missing username or password");
                 String username = (String) replicatorMap.authenticator.get("username");
                 String password = (String) replicatorMap.authenticator.get("password");
-                mReplicatorConfig.setAuthenticator(new BasicAuthenticator(username,password));
+                mReplicatorConfig.setAuthenticator(new BasicAuthenticator(username, password));
                 break;
             case "session":
-                if (!replicatorMap.authenticator.containsKey("sessionId")) throw new IllegalArgumentException("Missing sessionId");
+                if (!replicatorMap.authenticator.containsKey("sessionId"))
+                    throw new IllegalArgumentException("Missing sessionId");
                 String sessionId = (String) replicatorMap.authenticator.get("sessionId");
                 String cookieName = (String) replicatorMap.authenticator.get("cookieName");
-                mReplicatorConfig.setAuthenticator(new SessionAuthenticator(sessionId,cookieName));
+                mReplicatorConfig.setAuthenticator(new SessionAuthenticator(sessionId, cookieName));
                 break;
             default:
                 throw new IllegalArgumentException("Invalid authentication method: " + method);
@@ -133,6 +143,7 @@ class ReplicatorMap {
     String pinnedServerCertificate;
     boolean hasAuthenticator = false;
     Map<String, Object> authenticator;
+    List<String> documentIds;
 
     ReplicatorMap(JSONObject jsonObject) {
         Object unwrappedJson = JSONUtil.unwrap(jsonObject);
@@ -169,13 +180,30 @@ class ReplicatorMap {
                     authenticator = getMapFromGenericMap(mapObject);
                 }
             }
+            if (config.containsKey("documentIds")) {
+                Object listObject = config.get("documentIds");
+                if (listObject instanceof List<?>) {
+                    documentIds = getListFromGenericList(listObject);
+                }
+            }
         }
+    }
+
+    private List<String> getListFromGenericList(Object objectList) {
+        List<String> resultList = new ArrayList<>();
+        if (objectList instanceof List<?>) {
+            List<?> genericList = (List<?>) objectList;
+            for (Object object : genericList) {
+                resultList.add(Objects.toString(object, null));
+            }
+        }
+        return resultList;
     }
 
     private Map<String, Object> getMapFromGenericMap(Object objectMap) {
         Map<String, Object> resultMap = new HashMap<>();
         if (objectMap instanceof Map<?, ?>) {
-            Map<?,?> genericMap = (Map<?,?>) objectMap;
+            Map<?, ?> genericMap = (Map<?, ?>) objectMap;
             for (Map.Entry<?, ?> entry : genericMap.entrySet()) {
                 resultMap.put((String) entry.getKey(), entry.getValue());
             }

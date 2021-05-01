@@ -11,6 +11,7 @@ class ReplicatorConfiguration {
   bool continuous;
   String pinnedServerCertificate;
   Authenticator authenticator;
+  List<String> documentIds;
 
   /*bool Function(Document, int) _pushFilter;
   bool Function(Document, int) get pushFilter => _pushFilter;
@@ -59,6 +60,10 @@ class ReplicatorConfiguration {
 
     if (continuous != null) {
       map["continuous"] = continuous;
+    }
+
+    if(documentIds != null){
+      map["documentIds"] = documentIds;
     }
 
     //map["hasPushFilter"] = pushFilter != null;
